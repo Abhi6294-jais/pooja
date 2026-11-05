@@ -167,8 +167,6 @@ function buildWhatsAppOrderMsg(orderData) {
     : "Pay on Delivery";
 
   let msg = "";
-  const utrLine = orderData.utrNumber ? `\n🔢 *UPI UTR / Ref No.:* ${orderData.utrNumber}` : (isUPI ? `\n🔢 *UPI स्थिति:* ग्राहक द्वारा पुष्ट (Paid via UPI)` : "");
-
   if (isHi) {
     msg = `🙏 *नया ऑर्डर — ${BUSINESS.name}*
 
@@ -188,7 +186,7 @@ ${items}
 ━━━━━━━━━━━━━━━
 💵 *कुल राशि:* ₹${orderData.grandTotal.toLocaleString("en-IN")}
 
-💳 *भुगतान का तरीका:* ${paymentMethodStr}${utrLine}
+💳 *भुगतान का तरीका:* ${paymentMethodStr}
 ✅ *भुगतान स्थिति:* ${paymentStatusStr}
 
 🙏 कृपया इस ऑर्डर की पुष्टि करें।
@@ -217,7 +215,7 @@ ${items}
 ━━━━━━━━━━━━━━━
 💵 *Total:* ₹${orderData.grandTotal.toLocaleString("en-IN")}
 
-💳 *Payment:* ${paymentMethodStr}${utrLine}
+💳 *Payment:* ${paymentMethodStr}
 ✅ *Payment Status:* ${paymentStatusStr}
 
 🙏 Please confirm this order.
@@ -502,10 +500,8 @@ function navigateTo(page, pushState = true) {
 
   const navLinks = document.getElementById("navLinks");
   const hamburger = document.getElementById("hamburger");
-  const backdrop = document.getElementById("navBackdrop");
-  if (navLinks) navLinks.classList.remove("open");
-  if (hamburger) hamburger.classList.remove("open");
-  if (backdrop) backdrop.classList.remove("open");
+  navLinks.classList.remove("open");
+  hamburger.classList.remove("open");
 
   const app = document.getElementById("app");
   switch (page) {
@@ -550,8 +546,6 @@ function setupNavbarScroll() {
 function toggleMobileMenu() {
   document.getElementById("navLinks").classList.toggle("open");
   document.getElementById("hamburger").classList.toggle("open");
-  const backdrop = document.getElementById("navBackdrop");
-  if (backdrop) backdrop.classList.toggle("open");
 }
 
 // ── Particles ──
@@ -1056,8 +1050,8 @@ function renderCartPage() {
         ${delivery !== 0 ? `<div class="cart-summary-row text-muted" style="font-size:0.8rem"><span>${t("cart_free_note")}</span></div>` : ""}
         <div class="cart-summary-total"><span>${t("cart_total")}</span><span>${formatPrice(total)}</span></div>
         <div class="cart-actions">
-          <button class="btn btn-primary" onclick="openCheckoutModal()">${t("cart_place_order")}</button>
           <button class="btn btn-secondary" onclick="navigateTo('pooja')">${t("cart_continue")}</button>
+          <button class="btn btn-primary" onclick="openCheckoutModal()">${t("cart_place_order")}</button>
         </div>
       </div>
     </div></div>
@@ -1166,14 +1160,13 @@ function viewOrderReceipt(orderId) {
       <div class="receipt-item receipt-total"><span>${t("cart_total")}</span><span>${formatPrice(order.grandTotal)}</span></div>
       <div class="receipt-divider"></div>
       <div class="receipt-item"><span>💳 ${t("checkout_payment")}</span><span>${order.paymentType === "upi" || (order.paymentMethod && order.paymentMethod.includes("UPI")) ? t("checkout_upi") : t("checkout_cod")}</span></div>
-      ${order.utrNumber ? `<div class="receipt-item"><span>🔢 UTR / Ref No.</span><span><strong>${order.utrNumber}</strong></span></div>` : ""}
     </div>
   `;
 
   const footerHTML = `
-    <button class="btn btn-primary" onclick="reorderFromReceipt('${order.orderId}')">🔄 ${t("order_reorder")}</button>
-    <button class="btn btn-secondary" onclick="askOrderStatus('${order.orderId}')">💬 ${t("order_check_status")}</button>
     <button class="btn btn-secondary" onclick="closeModal()">${t("close")}</button>
+    <button class="btn btn-sm btn-primary" onclick="askOrderStatus('${order.orderId}')">💬 ${t("order_check_status")}</button>
+    <button class="btn btn-primary" onclick="reorderFromReceipt('${order.orderId}')">🔄 ${t("order_reorder")}</button>
   `;
 
   openModal(`📄 ${t("order_receipt")} — ${order.orderId}`, bodyHTML, footerHTML);
@@ -1409,16 +1402,14 @@ function saveCart() {
 }
 
 function updateCartBadge() {
+  const badge = document.getElementById("cartBadge");
   const total = cart.reduce((s, i) => s + i.qty, 0);
-  const badges = document.querySelectorAll(".cart-badge");
-  badges.forEach((b) => {
-    if (total > 0) {
-      b.textContent = total;
-      b.classList.remove("hidden");
-    } else {
-      b.classList.add("hidden");
-    }
-  });
+  if (total > 0) {
+    badge.textContent = total;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
 }
 
 // ══════════════════════════════════════
@@ -1578,8 +1569,8 @@ function openCheckoutModal() {
     </form>
   `;
   const footerHTML = `
-    <button class="btn btn-primary" onclick="document.getElementById('checkoutForm').requestSubmit()">${t("checkout_next")} →</button>
     <button class="btn btn-secondary" onclick="closeModal()">${t("checkout_cancel")}</button>
+    <button class="btn btn-primary" onclick="document.getElementById('checkoutForm').requestSubmit()">${t("checkout_next")} →</button>
   `;
   openModal(t("checkout_title"), bodyHTML, footerHTML);
 }
@@ -1605,9 +1596,6 @@ function goToPaymentStep(event) {
   const orderId = generateOrderId();
   checkoutData.orderId = orderId;
   const qrUrl = getUpiQrUrl(checkoutData.grandTotal, orderId);
-  const upiIntentUrl = `upi://pay?pa=${BUSINESS.upiId}&pn=${encodeURIComponent(BUSINESS.upiName)}&am=${checkoutData.grandTotal}&cu=INR&tn=${encodeURIComponent("Order " + orderId + " - " + BUSINESS.name)}`;
-  selectedPayment = "";
-  isUpiPaymentDone = false;
 
   document.getElementById("modalBody").innerHTML = `
     <div class="checkout-steps">
@@ -1626,70 +1614,22 @@ function goToPaymentStep(event) {
         <div class="payment-option-header">
           <span class="payment-radio"></span>
           <span class="payment-icon">📱</span>
-          <div style="flex:1">
+          <div>
             <div class="payment-name">${t("checkout_upi")}</div>
             <div class="payment-desc">${t("checkout_upi_desc")}</div>
           </div>
         </div>
         <div class="payment-body" id="upiBody">
           <div class="upi-qr-section">
-            <div class="upi-amount-badge">${formatPrice(checkoutData.grandTotal)}</div>
-            
-            <!-- Quick launch for mobile devices -->
-            <a href="${upiIntentUrl}" class="btn btn-upi-app" target="_blank" onclick="handleUpiAppLaunch()">
-              ${t("checkout_pay_via_app")}
-            </a>
-
-            <!-- UPI ID & Copy -->
-            <div class="upi-id-box">
-              <div style="display:flex;flex-direction:column;text-align:left">
-                <span style="font-size:0.75rem;color:var(--text-muted)">${t("checkout_pay_to")}:</span>
-                <strong class="upi-id-value">${BUSINESS.upiId}</strong>
-              </div>
-              <button type="button" class="btn-copy-upi" onclick="event.stopPropagation(); copyUpiId('${BUSINESS.upiId}')">📋 ${t("checkout_copy_upi")}</button>
-            </div>
-
-            <!-- QR code image for scanning -->
-            <div class="upi-qr-wrap">
-              <img src="${qrUrl}" alt="UPI QR Code" class="upi-qr-img" />
+            <img src="${qrUrl}" alt="UPI QR Code" class="upi-qr-img" />
+            <div class="upi-info">
+              <div class="upi-amount">${formatPrice(checkoutData.grandTotal)}</div>
+              <div class="upi-id">${t("checkout_pay_to")}: <strong>${BUSINESS.upiId}</strong></div>
               <div class="upi-order-id">${t("order_id_label")}: <strong>${orderId}</strong></div>
-            </div>
-
-            <div class="upi-steps">
-              <div>1️⃣ ${t("checkout_upi_step1")}</div>
-              <div>2️⃣ ${t("checkout_upi_step2")}</div>
-              <div>3️⃣ ${t("checkout_upi_step3")}</div>
-            </div>
-
-            <!-- UPI Payment Done Verification -->
-            <div class="upi-verification-card" onclick="event.stopPropagation()">
-              <div class="upi-verify-header">
-                <span class="upi-verify-icon">🛡️</span>
-                <span class="upi-verify-title">${t("checkout_upi_verify_header")}</span>
-              </div>
-              <p class="upi-verify-subtitle">${t("checkout_upi_verify_instruction")}</p>
-              
-              <label class="upi-checkbox-label" for="upiPaidCheckbox">
-                <input type="checkbox" id="upiPaidCheckbox" onchange="toggleUpiPaymentDone(this.checked)" />
-                <span class="upi-checkbox-text">
-                  <strong>${t("checkout_upi_paid_checkbox")} ${formatPrice(checkoutData.grandTotal)}</strong>
-                  <small>${t("checkout_upi_paid_hint")}</small>
-                </span>
-              </label>
-
-              <div class="upi-utr-field">
-                <label class="form-label" for="upiUtrNumber">
-                  ${t("checkout_utr_label")} <span class="badge-optional">(${t("checkout_optional")})</span>
-                </label>
-                <input 
-                  type="text" 
-                  id="upiUtrNumber" 
-                  class="form-input" 
-                  placeholder="${t("checkout_utr_placeholder")}" 
-                  maxlength="16"
-                  autocomplete="off"
-                />
-                <div class="form-hint">${t("checkout_utr_hint")}</div>
+              <div class="upi-steps">
+                <div>1️⃣ ${t("checkout_upi_step1")}</div>
+                <div>2️⃣ ${t("checkout_upi_step2")}</div>
+                <div>3️⃣ ${t("checkout_upi_step3")}</div>
               </div>
             </div>
           </div>
@@ -1700,24 +1640,22 @@ function goToPaymentStep(event) {
         <div class="payment-option-header">
           <span class="payment-radio"></span>
           <span class="payment-icon">💵</span>
-          <div style="flex:1">
+          <div>
             <div class="payment-name">${t("checkout_cod")}</div>
             <div class="payment-desc">${t("checkout_cod_desc")}</div>
           </div>
         </div>
       </div>
     </div>
-    <div class="payment-status-hint" id="paymentStatusHint">${t("checkout_select_payment")}</div>
   `;
 
   document.getElementById("modalFooter").innerHTML = `
-    <button class="btn btn-primary" id="confirmPayBtn" onclick="confirmPayment()" disabled>${t("checkout_confirm_pay")}</button>
     <button class="btn btn-secondary" onclick="openCheckoutModal()">← ${t("checkout_back")}</button>
+    <button class="btn btn-primary" id="confirmPayBtn" onclick="confirmPayment()" disabled>${t("checkout_confirm_pay")}</button>
   `;
 }
 
 let selectedPayment = "";
-let isUpiPaymentDone = false;
 
 function selectPayment(method) {
   selectedPayment = method;
@@ -1728,95 +1666,8 @@ function selectPayment(method) {
     method === "upi" ? "payOptUpi" : "payOptCod"
   );
   if (opt) opt.classList.add("selected");
-
   const btn = document.getElementById("confirmPayBtn");
-  const hint = document.getElementById("paymentStatusHint");
-
-  if (method === "cod") {
-    if (btn) {
-      btn.disabled = false;
-      btn.classList.add("btn-ready");
-    }
-    if (hint) {
-      hint.className = "payment-status-hint ready";
-      hint.innerHTML = `💵 ${t("checkout_cod_notice")}`;
-    }
-  } else if (method === "upi") {
-    const isChecked = document.getElementById("upiPaidCheckbox") ? document.getElementById("upiPaidCheckbox").checked : false;
-    isUpiPaymentDone = isChecked;
-    if (btn) {
-      btn.disabled = !isChecked;
-      if (isChecked) {
-        btn.classList.add("btn-ready");
-      } else {
-        btn.classList.remove("btn-ready");
-      }
-    }
-    if (hint) {
-      if (isChecked) {
-        hint.className = "payment-status-hint ready";
-        hint.innerHTML = `✅ ${t("checkout_ready_to_confirm")}`;
-      } else {
-        hint.className = "payment-status-hint warning";
-        hint.innerHTML = `⚠️ ${t("checkout_upi_notice")}`;
-      }
-    }
-  }
-}
-
-function toggleUpiPaymentDone(checked) {
-  isUpiPaymentDone = checked;
-  const btn = document.getElementById("confirmPayBtn");
-  const hint = document.getElementById("paymentStatusHint");
-  if (selectedPayment === "upi") {
-    if (btn) {
-      btn.disabled = !checked;
-      if (checked) {
-        btn.classList.add("btn-ready");
-      } else {
-        btn.classList.remove("btn-ready");
-      }
-    }
-    if (hint) {
-      if (checked) {
-        hint.className = "payment-status-hint ready";
-        hint.innerHTML = `✅ ${t("checkout_ready_to_confirm")}`;
-      } else {
-        hint.className = "payment-status-hint warning";
-        hint.innerHTML = `⚠️ ${t("checkout_upi_notice")}`;
-      }
-    }
-  }
-}
-
-function handleUpiAppLaunch() {
-  showToast(t("checkout_upi_paid_hint"), "📱");
-}
-
-function copyUpiId(id) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(id).then(() => {
-      showToast(t("checkout_upi_copied"), "📋");
-    }).catch(() => fallbackCopy(id));
-  } else {
-    fallbackCopy(id);
-  }
-}
-
-function fallbackCopy(text) {
-  try {
-    const input = document.createElement("input");
-    input.value = text;
-    input.style.position = "fixed";
-    input.style.opacity = "0";
-    document.body.appendChild(input);
-    input.select();
-    document.execCommand("copy");
-    document.body.removeChild(input);
-    showToast(t("checkout_upi_copied"), "📋");
-  } catch (e) {
-    showToast(text, "📋");
-  }
+  if (btn) btn.disabled = false;
 }
 
 function confirmPayment() {
@@ -1837,10 +1688,6 @@ function confirmPayment() {
     minute: "2-digit",
   });
 
-  const utrInput = document.getElementById("upiUtrNumber");
-  const utrVal = utrInput ? utrInput.value.trim() : "";
-  checkoutData.utrNumber = utrVal;
-
   const orderData = {
     orderId: checkoutData.orderId,
     date: dateStr,
@@ -1859,7 +1706,6 @@ function confirmPayment() {
     paymentType: selectedPayment,
     paymentMethod: checkoutData.paymentMethod,
     paymentStatus: checkoutData.paymentStatus,
-    utrNumber: selectedPayment === "upi" ? utrVal : "",
     status: selectedPayment === "upi" ? "processing" : "confirmed",
     statusLabel:
       selectedPayment === "upi" ? t("status_processing") : t("status_confirmed"),
@@ -1895,7 +1741,6 @@ function confirmPayment() {
         <div class="receipt-item"><span>${t("order_id_label")}</span><span><strong>${orderData.orderId}</strong></span></div>
         <div class="receipt-item"><span>${t("cart_total")}</span><span><strong>${formatPrice(orderData.grandTotal)}</strong></span></div>
         <div class="receipt-item"><span>💳 ${t("checkout_payment")}</span><span>${orderData.paymentMethod}</span></div>
-        ${orderData.utrNumber ? `<div class="receipt-item"><span>🔢 UTR / Ref</span><span><strong>${orderData.utrNumber}</strong></span></div>` : ""}
       </div>
       <div class="success-subtext mt-md">
         ${t("order_thanks")}<br>
@@ -1977,13 +1822,5 @@ function showToast(message, icon = "✅") {
 
 // ── Escape to close ──
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeModal();
-    const navLinks = document.getElementById("navLinks");
-    const hamburger = document.getElementById("hamburger");
-    const backdrop = document.getElementById("navBackdrop");
-    if (navLinks) navLinks.classList.remove("open");
-    if (hamburger) hamburger.classList.remove("open");
-    if (backdrop) backdrop.classList.remove("open");
-  }
+  if (e.key === "Escape") closeModal();
 });

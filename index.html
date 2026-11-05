@@ -52,18 +52,12 @@
         </button>
       </div>
 
-      <div class="nav-mobile-actions">
-        <button class="nav-quick-cart" onclick="navigateTo('cart')" aria-label="Cart" title="View Cart">
-          🛒<span class="cart-badge hidden" id="quickCartBadge">0</span>
-        </button>
-        <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()" aria-label="Toggle navigation">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
+      <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </nav>
-    <div class="nav-backdrop" id="navBackdrop" onclick="toggleMobileMenu()"></div>
 
     <!-- ── Main App Container ── -->
     <main id="app"></main>
