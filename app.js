@@ -1593,6 +1593,7 @@ function goToPaymentStep(event) {
   if (s1) s1.classList.replace("active", "done");
   if (s2) s2.classList.add("active");
 
+  selectedPayment = "";
   const orderId = generateOrderId();
   checkoutData.orderId = orderId;
   const qrUrl = getUpiQrUrl(checkoutData.grandTotal, orderId);
@@ -1631,6 +1632,10 @@ function goToPaymentStep(event) {
                 <div>2️⃣ ${t("checkout_upi_step2")}</div>
                 <div>3️⃣ ${t("checkout_upi_step3")}</div>
               </div>
+              <label class="upi-done-toggle" for="upiPaidCheck" onclick="event.stopPropagation()">
+                <input type="checkbox" id="upiPaidCheck" onchange="toggleUpiDone(this.checked)" />
+                <span>${t("checkout_upi_paid_done")}</span>
+              </label>
             </div>
           </div>
         </div>
@@ -1667,7 +1672,20 @@ function selectPayment(method) {
   );
   if (opt) opt.classList.add("selected");
   const btn = document.getElementById("confirmPayBtn");
-  if (btn) btn.disabled = false;
+  if (!btn) return;
+  if (method === "cod") {
+    btn.disabled = false;
+  } else if (method === "upi") {
+    const isChecked = document.getElementById("upiPaidCheck") ? document.getElementById("upiPaidCheck").checked : false;
+    btn.disabled = !isChecked;
+  }
+}
+
+function toggleUpiDone(checked) {
+  if (selectedPayment === "upi") {
+    const btn = document.getElementById("confirmPayBtn");
+    if (btn) btn.disabled = !checked;
+  }
 }
 
 function confirmPayment() {

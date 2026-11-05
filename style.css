@@ -2201,6 +2201,33 @@ ul {
   }
 }
 
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 10px;
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cart-actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .cart-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 480px) {
   .brand-text {
     font-size: 0.9rem;
@@ -2224,7 +2251,7 @@ ul {
   }
 
   .modal {
-    margin: var(--space-md);
+    margin: 0;
   }
 }
 
@@ -2406,8 +2433,46 @@ ul {
 }
 
 .payment-option.selected .payment-body {
-  max-height: 500px;
+  max-height: 560px;
   margin-top: var(--space-md);
+}
+
+.upi-done-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: var(--space-md);
+  padding: 8px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--clr-gold-light);
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.upi-done-toggle:hover {
+  background: var(--bg-glass-strong);
+  border-color: var(--clr-primary);
+}
+
+.upi-done-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--clr-primary);
+  cursor: pointer;
+  margin: 0;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* ── UPI QR Section ── */

@@ -197,6 +197,7 @@ const LANG = {
     checkout_upi_step1: "Open any UPI app (GPay, PhonePe, Paytm)",
     checkout_upi_step2: "Scan this QR code",
     checkout_upi_step3: "Complete payment & click confirm",
+    checkout_upi_paid_done: "I have completed the UPI payment",
 
     // Payment status
     payment_pending_verify: "UPI — Pending Verification",
@@ -485,6 +486,7 @@ const LANG = {
     checkout_upi_step1: "कोई भी UPI ऐप खोलें (GPay, PhonePe, Paytm)",
     checkout_upi_step2: "यह QR कोड स्कैन करें",
     checkout_upi_step3: "भुगतान पूरा करें और पुष्टि पर क्लिक करें",
+    checkout_upi_paid_done: "मैंने UPI भुगतान पूरा कर लिया है",
 
     // Payment status
     payment_pending_verify: "UPI — सत्यापन बाकी",
