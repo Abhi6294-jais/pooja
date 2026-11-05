@@ -25,7 +25,12 @@ let currentPage = "home";
 let searchQuery = "";
 let poojaSearchQuery = "";
 let activeCategory = "all";
-let currentLang = localStorage.getItem("poojapath_lang") || "en";
+let currentLang = localStorage.getItem("poojapath_lang_pref");
+if (!currentLang) {
+  currentLang = "hi";
+  localStorage.setItem("poojapath_lang_pref", "hi");
+  localStorage.setItem("poojapath_lang", "hi");
+}
 let visibleTestimonialsCount = 3;
 
 let customReviews = JSON.parse(localStorage.getItem("poojapath_reviews")) || [];
@@ -40,7 +45,15 @@ function t(key) {
 }
 
 function localName(item) {
-  return currentLang === "hi" && item.nameHi ? item.nameHi : item.name;
+  if (currentLang === "hi") {
+    if (item.nameHi) return item.nameHi;
+    const prod = typeof PRODUCTS !== "undefined" && PRODUCTS.find((p) => p.id === item.id);
+    if (prod && prod.nameHi) return prod.nameHi;
+    const serv = typeof POOJA_SERVICES !== "undefined" && POOJA_SERVICES.find((s) => s.id === item.id);
+    if (serv && serv.nameHi) return serv.nameHi;
+    if (item.localName) return item.localName;
+  }
+  return item.name;
 }
 function localDesc(item) {
   return currentLang === "hi" && (item.descHi || item.descriptionHi)
@@ -66,6 +79,21 @@ function localLocation(item) {
     : item.location;
 }
 
+// ── Dynamic Calendar Icon ──
+function getDynamicCalendarIcon() {
+  const now = new Date();
+  const day = now.getDate();
+  const monthNamesEn = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const monthNamesHi = ["जन", "फ़र", "मार्च", "अप्रै", "मई", "जून", "जुला", "अग", "सितं", "अक्तू", "नवं", "दिसं"];
+  const month = (currentLang === "hi" ? monthNamesHi : monthNamesEn)[now.getMonth()];
+  const fullDate = now.toLocaleDateString(currentLang === "hi" ? "hi-IN" : "en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  });
+  return `<svg class="dynamic-calendar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${fullDate}"><title>${fullDate}</title><rect x="2.5" y="3.5" width="19" height="18.5" rx="3.5" fill="#ffffff" stroke="#d4a017" stroke-width="1.3"/><path d="M2.5 7C2.5 5.067 4.067 3.5 6 3.5H18C19.933 3.5 21.5 5.067 21.5 7V8.5H2.5V7Z" fill="#b91c1c"/><rect x="6.5" y="1.5" width="2" height="4" rx="1" fill="#ffffff" stroke="#881337" stroke-width="0.5"/><rect x="15.5" y="1.5" width="2" height="4" rx="1" fill="#ffffff" stroke="#881337" stroke-width="0.5"/><text x="12" y="6.3" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Outfit', -apple-system, sans-serif" font-weight="700" font-size="3.5" letter-spacing="0.5">${month}</text><text x="12" y="15.3" text-anchor="middle" dominant-baseline="central" fill="#1a0f0a" font-family="'Outfit', -apple-system, sans-serif" font-weight="800" font-size="9.5">${day}</text></svg>`;
+}
+
 // ── Order ID Generator ──
 function generateOrderId() {
   const now = new Date();
@@ -77,21 +105,102 @@ function generateOrderId() {
   return "PP" + datePart + randomPart;
 }
 
+// ── Dynamic WhatsApp Greetings & Messages ──
+function getWhatsAppGreeting(type = "general") {
+  const isHi = currentLang === "hi";
+  if (type === "consult") {
+    return isHi
+      ? "नमस्ते पंडित जी! मैं माँ भवानी एंटरप्राइजेज की पूजा सेवाओं और अनुष्ठानों के बारे में परामर्श करना चाहता/चाहती हूँ।"
+      : "Namaste Pandit Ji! I would like to consult with you regarding pooja services and rituals.";
+  }
+  return isHi
+    ? "नमस्ते! मैं माँ भवानी एंटरप्राइजेज की पूजा सेवाओं के बारे में और जानकारी चाहता/चाहती हूँ।"
+    : "Namaste! I want to know more about your pooja services.";
+}
+
+function askOrderStatus(orderId) {
+  const isHi = currentLang === "hi";
+  const msg = isHi
+    ? `नमस्ते! मैं अपने ऑर्डर (${orderId}) की वर्तमान स्थिति (status) जानना चाहता/चाहती हूँ। कृपया मुझे जानकारी प्रदान करें।`
+    : `Namaste! I would like to check the current status of my order (${orderId}). Please provide an update.`;
+  openWhatsApp(msg);
+}
+
 // ── WhatsApp Message Builder ──
 function buildWhatsAppOrderMsg(orderData) {
+  const isHi = currentLang === "hi";
+
   const items = orderData.items
-    .map(
-      (item) =>
-        `• ${item.emoji} ${item.name} x${item.qty} = ₹${(
-          item.price * item.qty
-        ).toLocaleString("en-IN")}`
-    )
+    .map((item) => {
+      const name = localName(item);
+      return `• ${item.emoji || "🛕"} ${name} ×${item.qty} = ₹${(
+        item.price * item.qty
+      ).toLocaleString("en-IN")}`;
+    })
     .join("\n");
 
-  const msg = `🙏 *NEW ORDER — ${BUSINESS.name}*
+  const deliveryStr =
+    orderData.delivery === 0
+      ? isHi
+        ? "मुफ़्त (FREE)"
+        : "FREE"
+      : "₹" + orderData.delivery.toLocaleString("en-IN");
+
+  const isUPI =
+    orderData.paymentType === "upi" ||
+    (orderData.paymentMethod && orderData.paymentMethod.includes("UPI"));
+
+  const paymentMethodStr = isUPI
+    ? isHi
+      ? "UPI (ऑनलाइन)"
+      : "UPI (Online)"
+    : isHi
+    ? "कैश ऑन डिलीवरी (COD)"
+    : "Cash on Delivery (COD)";
+
+  const paymentStatusStr = isUPI
+    ? isHi
+      ? "सत्यापन प्रक्रिया में (Pending Verification)"
+      : "Pending Verification"
+    : isHi
+    ? "डिलीवरी पर देय (Pay on Delivery)"
+    : "Pay on Delivery";
+
+  let msg = "";
+  if (isHi) {
+    msg = `🙏 *नया ऑर्डर — ${BUSINESS.name}*
+
+📋 *ऑर्डर आईडी:* ${orderData.orderId}
+📅 *दिनांक:* ${orderData.date || new Date().toISOString().split("T")[0]}
+${orderData.time ? `⏰ *समय:* ${orderData.time}\n` : ""}
+👤 *ग्राहक:* ${orderData.customerName}
+📞 *फ़ोन नंबर:* ${orderData.customerPhone}
+✉️ *ईमेल:* ${orderData.customerEmail || "—"}
+📍 *डिलीवरी पता:* ${orderData.customerAddress}
+
+🛒 *ऑर्डर की गई सामग्री:*
+${items}
+
+💰 *उप-योग:* ₹${orderData.subtotal.toLocaleString("en-IN")}
+🚚 *डिलीवरी शुल्क:* ${deliveryStr}
+━━━━━━━━━━━━━━━
+💵 *कुल राशि:* ₹${orderData.grandTotal.toLocaleString("en-IN")}
+
+💳 *भुगतान का तरीका:* ${paymentMethodStr}
+✅ *भुगतान स्थिति:* ${paymentStatusStr}
+
+🙏 कृपया इस ऑर्डर की पुष्टि करें।
+
+━━━━━━━━━━━━━━━
+_पुष्टि के लिए उत्तर दें:_
+✅ *ऑर्डर कन्फर्म (Order Confirmed)*
+_या_
+🚚 *ऑर्डर भेजा गया (Order Dispatched)*`;
+  } else {
+    msg = `🙏 *NEW ORDER — ${BUSINESS.name}*
 
 📋 *Order ID:* ${orderData.orderId}
-📅 *Date:* ${orderData.date || new Date().toISOString().split('T')[0]}
+📅 *Date:* ${orderData.date || new Date().toISOString().split("T")[0]}
 ${orderData.time ? `⏰ *Time:* ${orderData.time}\n` : ""}
 👤 *Customer:* ${orderData.customerName}
 📞 *Phone:* ${orderData.customerPhone}
@@ -102,16 +211,12 @@ ${orderData.time ? `⏰ *Time:* ${orderData.time}\n` : ""}
 ${items}
 
 💰 *Subtotal:* ₹${orderData.subtotal.toLocaleString("en-IN")}
-🚚 *Delivery:* ${
-    orderData.delivery === 0
-      ? "FREE"
-      : "₹" + orderData.delivery.toLocaleString("en-IN")
-  }
+🚚 *Delivery:* ${deliveryStr}
 ━━━━━━━━━━━━━━━
 💵 *Total:* ₹${orderData.grandTotal.toLocaleString("en-IN")}
 
-💳 *Payment:* ${orderData.paymentMethod}
-${orderData.paymentStatus ? `✅ *Payment Status:* ${orderData.paymentStatus}` : ""}
+💳 *Payment:* ${paymentMethodStr}
+✅ *Payment Status:* ${paymentStatusStr}
 
 🙏 Please confirm this order.
 
@@ -120,32 +225,66 @@ _To confirm, reply:_
 ✅ *Order Confirmed*
 _or_
 🚚 *Order Dispatched*`;
+  }
 
   return encodeURIComponent(msg);
 }
 
 function buildWhatsAppBookingMsg(bookingData) {
-  const msg = `🙏 *NEW BOOKING — ${BUSINESS.name}*
+  const isHi = currentLang === "hi";
+
+  let msg = "";
+  if (isHi) {
+    msg = `🙏 *नई पूजा बुकिंग — ${BUSINESS.name}*
+
+📋 *बुकिंग आईडी:* ${bookingData.bookingId}
+
+🕉️ *पूजा सेवा:* ${bookingData.poojaName}
+💰 *दक्षिणा / मूल्य:* ₹${Number(bookingData.price).toLocaleString("en-IN")}
+
+👤 *यजमान / नाम:* ${bookingData.customerName}
+📞 *फ़ोन नंबर:* ${bookingData.customerPhone}
+📅 *दिनांक:* ${bookingData.date}
+⏰ *समय / मुहूर्त:* ${bookingData.time}
+📍 *पूजा स्थल / पता:* ${bookingData.address}
+${bookingData.notes ? `📝 *विशेष विवरण:* ${bookingData.notes}\n` : ""}
+🙏 कृपया इस पूजा बुकिंग की पुष्टि करें।`;
+  } else {
+    msg = `🙏 *NEW BOOKING — ${BUSINESS.name}*
 
 📋 *Booking ID:* ${bookingData.bookingId}
 
 🕉️ *Service:* ${bookingData.poojaName}
-💰 *Price:* ₹${bookingData.price.toLocaleString("en-IN")}
+💰 *Price:* ₹${Number(bookingData.price).toLocaleString("en-IN")}
 
 👤 *Name:* ${bookingData.customerName}
 📞 *Phone:* ${bookingData.customerPhone}
 📅 *Date:* ${bookingData.date}
 ⏰ *Time:* ${bookingData.time}
 📍 *Address:* ${bookingData.address}
-${bookingData.notes ? `📝 *Notes:* ${bookingData.notes}` : ""}
-
+${bookingData.notes ? `📝 *Notes:* ${bookingData.notes}\n` : ""}
 🙏 Please confirm this booking.`;
+  }
 
   return encodeURIComponent(msg);
 }
 
 function buildWhatsAppContactMsg(contactData) {
-  const msg = `📩 *NEW MESSAGE — ${BUSINESS.name}*
+  const isHi = currentLang === "hi";
+
+  let msg = "";
+  if (isHi) {
+    msg = `📩 *नया संदेश — ${BUSINESS.name}*
+
+👤 *नाम:* ${contactData.name}
+📞 *फ़ोन नंबर:* ${contactData.phone}
+✉️ *ईमेल:* ${contactData.email || "—"}
+📌 *विषय:* ${contactData.subject || "सामान्य पूछताछ"}
+
+💬 *संदेश:*
+${contactData.message}`;
+  } else {
+    msg = `📩 *NEW MESSAGE — ${BUSINESS.name}*
 
 👤 *Name:* ${contactData.name}
 📞 *Phone:* ${contactData.phone}
@@ -154,12 +293,19 @@ function buildWhatsAppContactMsg(contactData) {
 
 💬 *Message:*
 ${contactData.message}`;
+  }
 
   return encodeURIComponent(msg);
 }
 
-function openWhatsApp(encodedMsg) {
-  const url = `https://wa.me/${BUSINESS.phone}?text=${encodedMsg}`;
+function openWhatsApp(msg, type = "general") {
+  let text = msg;
+  if (!text || text === BUSINESS.whatsappGreeting) {
+    text = getWhatsAppGreeting(type);
+  }
+  const isAlreadyEncoded = typeof text === "string" && /%[0-9A-Fa-f]{2}/.test(text);
+  const encoded = isAlreadyEncoded ? text : encodeURIComponent(text);
+  const url = `https://wa.me/${BUSINESS.phone}?text=${encoded}`;
   window.open(url, "_blank");
 }
 
@@ -234,16 +380,21 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── Language Toggle ──
 function toggleLanguage() {
   currentLang = currentLang === "en" ? "hi" : "en";
+  localStorage.setItem("poojapath_lang_pref", currentLang);
   localStorage.setItem("poojapath_lang", currentLang);
   applyLanguage();
   navigateTo(currentPage, false);
 }
 
 function applyLanguage() {
+  document.documentElement.lang = currentLang;
   const langLabel = document.getElementById("langLabel");
   const langToggle = document.getElementById("langToggle");
   if (langLabel) langLabel.textContent = t("lang_toggle");
-  if (langToggle) langToggle.classList.toggle("hi", currentLang === "hi");
+  if (langToggle) {
+    langToggle.classList.toggle("hi", currentLang === "hi");
+    langToggle.title = currentLang === "hi" ? "Switch to English" : "हिंदी में बदलें";
+  }
 
   const ids = {
     navHome: "nav_home",
@@ -272,7 +423,7 @@ function submitReview() {
   const text = document.getElementById("reviewText").value.trim();
 
   if (!name || !text) {
-    showToast("Please fill in your name and review.", "⚠️");
+    showToast(t("review_fill_required"), "⚠️");
     return;
   }
 
@@ -292,7 +443,7 @@ function submitReview() {
   TESTIMONIALS.unshift(newReview);
   
   closeModal();
-  showToast("Review submitted successfully!", "✨");
+  showToast(t("review_submitted"), "✨");
   
   if (currentPage === "home") {
     visibleTestimonialsCount = 3;
@@ -304,15 +455,15 @@ function submitReview() {
 function openReviewModal() {
   const bodyHTML = `
     <div class="form-group">
-      <label>Name <span style="color:var(--clr-primary)">*</span></label>
-      <input type="text" id="reviewName" class="form-input" placeholder="Your Name" />
+      <label>${t("review_name")} <span style="color:var(--clr-primary)">*</span></label>
+      <input type="text" id="reviewName" class="form-input" placeholder="${t("review_placeholder_name")}" />
     </div>
     <div class="form-group">
-      <label>Location</label>
-      <input type="text" id="reviewLocation" class="form-input" placeholder="Your City" />
+      <label>${t("review_location")}</label>
+      <input type="text" id="reviewLocation" class="form-input" placeholder="${t("review_placeholder_loc")}" />
     </div>
     <div class="form-group">
-      <label>Rating (1-5)</label>
+      <label>${t("review_rating")} (1-5)</label>
       <select id="reviewRating" class="form-input">
         <option value="5">⭐⭐⭐⭐⭐ (5)</option>
         <option value="4">⭐⭐⭐⭐ (4)</option>
@@ -322,14 +473,14 @@ function openReviewModal() {
       </select>
     </div>
     <div class="form-group">
-      <label>Review <span style="color:var(--clr-primary)">*</span></label>
-      <textarea id="reviewText" class="form-input" rows="4" placeholder="Write your experience..."></textarea>
+      <label>${t("review_text")} <span style="color:var(--clr-primary)">*</span></label>
+      <textarea id="reviewText" class="form-input" rows="4" placeholder="${t("review_placeholder_text")}"></textarea>
     </div>
   `;
   const footerHTML = `
-    <button class="btn btn-primary" style="width:100%" onclick="submitReview()">Submit Review</button>
+    <button class="btn btn-primary" style="width:100%" onclick="submitReview()">${t("review_submit")}</button>
   `;
-  openModal("Write a Review", bodyHTML, footerHTML);
+  openModal(t("review_modal_title"), bodyHTML, footerHTML);
 }
 
 
@@ -550,8 +701,8 @@ function renderHomePage() {
           <h1 class="hero-title">${t("hero_title")}</h1>
           <p class="hero-subtitle">${t("hero_subtitle")}</p>
           <div class="hero-buttons">
-            <button class="btn btn-primary" onclick="navigateTo('pooja')">${t("hero_btn_book")}</button>
-            <button class="btn btn-secondary" onclick="navigateTo('contact')">${t("nav_contact")}</button>
+            <button class="btn btn-primary" onclick="navigateTo('pooja')">${getDynamicCalendarIcon()} ${t("hero_btn_book")}</button>
+            <button class="btn btn-secondary hero-contact-btn" onclick="navigateTo('contact')">📞 ${t("nav_contact")}</button>
           </div>
           <div class="hero-stats">
             <div class="hero-stat"><div class="hero-stat-number count-up" data-target="500" data-suffix="+">500+</div><div class="hero-stat-label">${t("hero_stat_families")}</div></div>
@@ -593,7 +744,7 @@ function renderHomePage() {
               <div class="founder-stat"><span class="founder-stat-num count-up" data-target="50" data-suffix="+">50+</span><span class="founder-stat-label">${t("founder_stat_pooja")}</span></div>
               <div class="founder-stat"><span class="founder-stat-num count-up" data-target="500" data-suffix="+">500+</span><span class="founder-stat-label">${t("founder_stat_families")}</span></div>
             </div>
-            <button class="btn btn-primary mt-lg" onclick="openWhatsApp(BUSINESS.whatsappGreeting)">💬 ${t("founder_consult")}</button>
+            <button class="btn btn-primary mt-lg" onclick="openWhatsApp(null, 'consult')">💬 ${t("founder_consult")}</button>
           </div>
         </div>
       </section>
@@ -632,13 +783,13 @@ function renderTestimonialCards() {
 
   html += `<div class="testimonial-actions" style="grid-column: 1 / -1; display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">`;
   
-  html += `<button class="btn btn-primary" onclick="openReviewModal()">✍️ Write a Review</button>`;
+  html += `<button class="btn btn-primary" onclick="openReviewModal()">${t("reviews_write")}</button>`;
 
   if (visibleTestimonialsCount < TESTIMONIALS.length) {
-    html += `<button class="btn btn-secondary" onclick="showMoreTestimonials()">See More Reviews</button>`;
+    html += `<button class="btn btn-secondary btn-see-more-reviews" onclick="showMoreTestimonials()">${t("reviews_see_more")}</button>`;
   }
   if (visibleTestimonialsCount > 3) {
-    html += `<button class="btn btn-secondary" onclick="showLessTestimonials()">See Less</button>`;
+    html += `<button class="btn btn-secondary btn-see-less-reviews" onclick="showLessTestimonials()">${t("reviews_see_less")}</button>`;
   }
   
   html += `</div>`;
@@ -833,7 +984,7 @@ function renderPoojaCard(pooja, index = 0) {
       </div>
       <div class="pooja-footer">
         <div><span class="pooja-price">${formatPrice(pooja.price)}</span><span class="pooja-price-label">${t("pooja_starting")}</span></div>
-        <button class="btn btn-primary" onclick="addToCart(${pooja.id}, 'pooja'); navigateTo('cart');">${t("pooja_book_now")}</button>
+        <button class="btn btn-primary" onclick="addToCart(${pooja.id}, 'pooja'); navigateTo('cart');">${getDynamicCalendarIcon()} ${t("pooja_book_now")}</button>
       </div>
     </div>
   `;
@@ -849,7 +1000,7 @@ function renderCartPage() {
           <div class="cart-empty-icon">🛒</div>
           <p class="cart-empty-text">${t("cart_empty_text")}</p>
           <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="navigateTo('pooja')">${t("hero_btn_book")}</button>
+            <button class="btn btn-primary" onclick="navigateTo('pooja')">${getDynamicCalendarIcon()} ${t("hero_btn_book")}</button>
           </div>
           ${orders.length > 0 ? `<div class="mt-lg"><button class="btn btn-secondary" onclick="navigateTo('orders')">📋 ${t("nav_orders")}</button></div>` : ""}
         </div>
@@ -919,7 +1070,7 @@ function renderOrdersPage() {
         <div class="cart-empty">
           <div class="cart-empty-icon">📦</div>
           <p class="cart-empty-text">${t("orders_empty")}</p>
-          <button class="btn btn-primary" onclick="navigateTo('pooja')">${t("hero_btn_book")}</button>
+          <button class="btn btn-primary" onclick="navigateTo('pooja')">${getDynamicCalendarIcon()} ${t("hero_btn_book")}</button>
         </div>
       </section></div>
     `;
@@ -945,7 +1096,7 @@ function renderOrdersPage() {
                 <div class="order-date">📅 ${order.date}</div>
               </div>
               <div style="display: flex; align-items: center; gap: var(--space-md);">
-                <div class="order-status ${order.status}">${order.statusLabel}</div>
+                <div class="order-status ${order.status}">${order.status === "confirmed" ? t("status_confirmed") : t("status_processing")}</div>
                 <button class="order-delete-btn" onclick="deleteOrder('${order.orderId}')" title="Delete Order History" style="background:none;border:none;cursor:pointer;font-size:1.5rem;color:var(--text-muted);line-height:1;">&times;</button>
               </div>
             </div>
@@ -953,13 +1104,13 @@ function renderOrdersPage() {
               ${order.items
                 .map(
                   (item) =>
-                    `<span class="order-item-chip">${item.emoji} ${item.name} ×${item.qty}</span>`
+                    `<span class="order-item-chip">${item.emoji || "🛕"} ${localName(item)} ×${item.qty}</span>`
                 )
                 .join("")}
             </div>
             <div class="order-card-footer">
               <div class="order-total">${t("cart_total")}: <strong>${formatPrice(order.grandTotal)}</strong></div>
-              <div class="order-payment">💳 ${order.paymentMethod}</div>
+              <div class="order-payment">💳 ${order.paymentType === "upi" || (order.paymentMethod && order.paymentMethod.includes("UPI")) ? t("checkout_upi") : t("checkout_cod")}</div>
               <button class="btn btn-sm btn-secondary" onclick="viewOrderReceipt('${order.orderId}')">📄 ${t("order_view_receipt")}</button>
               <button class="btn btn-sm btn-primary" onclick="askOrderStatus('${order.orderId}')">💬 ${t("order_check_status")}</button>
             </div>
@@ -981,7 +1132,7 @@ function viewOrderReceipt(orderId) {
         <div class="receipt-brand">🙏 ${BUSINESS.name}</div>
         <div class="receipt-meta">${t("order_id_label")}: <strong>${order.orderId}</strong></div>
         <div class="receipt-meta">📅 ${order.date}</div>
-        <div class="receipt-status ${order.status}">${order.statusLabel}</div>
+        <div class="receipt-status ${order.status}">${order.status === "confirmed" ? t("status_confirmed") : t("status_processing")}</div>
       </div>
       <div class="receipt-divider"></div>
       <div class="receipt-section">
@@ -997,7 +1148,7 @@ function viewOrderReceipt(orderId) {
           .map(
             (item) => `
           <div class="receipt-item">
-            <span>${item.emoji} ${item.name} ×${item.qty}</span>
+            <span>${item.emoji || "🛕"} ${localName(item)} ×${item.qty}</span>
             <span>${formatPrice(item.price * item.qty)}</span>
           </div>`
           )
@@ -1008,7 +1159,7 @@ function viewOrderReceipt(orderId) {
       <div class="receipt-item"><span>${t("cart_delivery")}</span><span>${order.delivery === 0 ? t("cart_free") : formatPrice(order.delivery)}</span></div>
       <div class="receipt-item receipt-total"><span>${t("cart_total")}</span><span>${formatPrice(order.grandTotal)}</span></div>
       <div class="receipt-divider"></div>
-      <div class="receipt-item"><span>💳 ${t("checkout_payment")}</span><span>${order.paymentMethod}</span></div>
+      <div class="receipt-item"><span>💳 ${t("checkout_payment")}</span><span>${order.paymentType === "upi" || (order.paymentMethod && order.paymentMethod.includes("UPI")) ? t("checkout_upi") : t("checkout_cod")}</span></div>
     </div>
   `;
 
@@ -1022,13 +1173,13 @@ function viewOrderReceipt(orderId) {
 }
 
 function deleteOrder(orderId) {
-  if (confirm("Are you sure you want to remove this order from your history?")) {
+  if (confirm(t("order_delete_confirm"))) {
     orders = orders.filter((o) => o.orderId !== orderId);
     localStorage.setItem("poojapath_orders", JSON.stringify(orders));
     
     document.getElementById("app").innerHTML = renderOrdersPage();
     setupScrollReveal();
-    showToast("Order removed from history.");
+    showToast(t("order_removed"));
   }
 }
 
@@ -1328,6 +1479,8 @@ function submitBooking(event, poojaId) {
   event.preventDefault();
   const pooja = POOJA_SERVICES.find((p) => p.id === poojaId);
   const bookingId = generateOrderId();
+  const timeEl = document.getElementById("bookTime");
+  const timeText = timeEl && timeEl.selectedIndex >= 0 ? timeEl.options[timeEl.selectedIndex].text : document.getElementById("bookTime").value;
 
   const bookingData = {
     bookingId,
@@ -1336,7 +1489,7 @@ function submitBooking(event, poojaId) {
     customerName: document.getElementById("bookName").value,
     customerPhone: document.getElementById("bookPhone").value,
     date: document.getElementById("bookDate").value,
-    time: document.getElementById("bookTime").value,
+    time: timeText,
     address: document.getElementById("bookAddress").value,
     notes: document.getElementById("bookNotes").value,
   };
@@ -1525,8 +1678,9 @@ function confirmPayment() {
   checkoutData.paymentStatus =
     selectedPayment === "upi" ? t("payment_pending_verify") : t("payment_cod");
 
+  const isHi = currentLang === "hi";
   const now = new Date();
-  const dateStr = now.toLocaleDateString("en-IN", {
+  const dateStr = now.toLocaleDateString(isHi ? "hi-IN" : "en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -1541,10 +1695,15 @@ function confirmPayment() {
     customerPhone: checkoutData.customerPhone,
     customerEmail: checkoutData.customerEmail,
     customerAddress: checkoutData.customerAddress,
-    items: cart.map((item) => ({ ...item })),
+    items: cart.map((item) => ({
+      ...item,
+      nameHi: item.nameHi || (PRODUCTS.find(p => p.id === item.id) || POOJA_SERVICES.find(s => s.id === item.id) || {}).nameHi || item.name,
+      localName: localName(item),
+    })),
     subtotal: checkoutData.subtotal,
     delivery: checkoutData.delivery,
     grandTotal: checkoutData.grandTotal,
+    paymentType: selectedPayment,
     paymentMethod: checkoutData.paymentMethod,
     paymentStatus: checkoutData.paymentStatus,
     status: selectedPayment === "upi" ? "processing" : "confirmed",
@@ -1608,11 +1767,16 @@ function confirmPayment() {
 function handleContactSubmit(event) {
   event.preventDefault();
 
+  const subEl = document.getElementById("contactSubject");
+  let subjectText = "";
+  if (subEl && subEl.selectedIndex >= 0) {
+    subjectText = subEl.options[subEl.selectedIndex].text;
+  }
   const contactData = {
     name: document.getElementById("contactName").value,
     phone: document.getElementById("contactPhone").value,
     email: document.getElementById("contactEmail").value,
-    subject: document.getElementById("contactSubject").value,
+    subject: subjectText || (currentLang === "hi" ? "सामान्य पूछताछ" : "General Inquiry"),
     message: document.getElementById("contactMessage").value,
   };
 

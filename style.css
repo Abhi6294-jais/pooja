@@ -590,15 +590,54 @@ ul {
 }
 
 .btn-secondary {
-  background: transparent;
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.2) 0%, rgba(35, 22, 14, 0.92) 100%);
   color: var(--clr-gold-light);
-  border: 1px solid var(--border-gold);
+  border: 2px solid #d4a017;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.25), 0 0 10px rgba(212, 160, 23, 0.2);
 }
 
 .btn-secondary:hover {
-  background: var(--bg-glass);
-  box-shadow: var(--shadow-gold);
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.35) 0%, rgba(50, 30, 20, 0.96) 100%);
+  border-color: #ffd700;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(212, 160, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
+}
+
+/* Explicit high-visibility styling for Contact and Reviews buttons */
+.hero-contact-btn,
+.btn-see-more-reviews,
+.btn-see-less-reviews {
+  border: 2px solid #d4a017 !important;
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.22) 0%, rgba(35, 22, 14, 0.95) 100%) !important;
+  color: #ffd700 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 215, 0, 0.25), 0 0 12px rgba(212, 160, 23, 0.25) !important;
+}
+
+.hero-contact-btn:hover,
+.btn-see-more-reviews:hover,
+.btn-see-less-reviews:hover {
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.38) 0%, rgba(55, 32, 20, 0.98) 100%) !important;
+  border-color: #ffd700 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 22px rgba(212, 160, 23, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  transform: translateY(-2px);
+}
+
+/* Dynamic Calendar Icon SVG */
+.dynamic-calendar-svg {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  transition: transform var(--transition-fast);
+}
+
+.btn:hover .dynamic-calendar-svg {
+  transform: scale(1.12);
 }
 
 .btn-danger {
@@ -731,24 +770,33 @@ ul {
 .search-input {
   flex: 1;
   min-width: 250px;
-  padding: 12px 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  padding: 13px 22px;
+  background: #1e130c;
+  border: 2px solid #d4a017;
   border-radius: var(--radius-sm);
-  color: var(--text-primary);
+  color: #ffffff;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 160, 23, 0.2);
   transition: all var(--transition-fast);
   outline: none;
 }
 
 .search-input::placeholder {
-  color: var(--text-muted);
+  color: #d6bba0;
+  font-weight: 400;
+}
+
+.search-input:hover {
+  border-color: #ffd700;
+  box-shadow: 0 4px 18px rgba(212, 160, 23, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .search-input:focus {
-  border-color: var(--clr-primary);
-  box-shadow: 0 0 0 3px rgba(255, 123, 0, 0.1);
+  border-color: #ffd700;
+  background: #271810;
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.35), 0 6px 22px rgba(0, 0, 0, 0.6);
 }
 
 .filter-tabs {
